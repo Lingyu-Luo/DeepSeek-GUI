@@ -119,7 +119,6 @@ init_session()
 with st.sidebar:
     st.title("Dialogs")
 
-    # 新增模型设置区域
     st.subheader("Model Settings")
     st.session_state.selected_model = st.selectbox(
         "Dialog Model",
@@ -203,10 +202,9 @@ with st.sidebar:
                     new_conversation()
                 st.rerun()
 
-# 主界面布局
 st.title("AI Agent Helper")
 
-# 显示聊天记录（支持多模态）
+# Load chat history
 for msg in st.session_state.messages:
     avatar = "🧑" if msg["role"] == "user" else "🤖"
     with st.chat_message(msg["role"], avatar=avatar):
@@ -227,7 +225,7 @@ for msg in st.session_state.messages:
             with st.expander("🧠 Reasoning Content(Click to unfold)"):
                 st.markdown(msg["reasoning"])
 
-# 处理用户输入（新增图片上传）
+# Processing Input
 uploaded_files = st.file_uploader(
     "📤 Upload Image File",
     type=["png", "jpg", "jpeg"],
