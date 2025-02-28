@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 import base64
 
-# 配置基础信息
+# Create client object
 client = OpenAI(
     base_url='https://api.siliconflow.cn/v1/', #Just example, use the service platform as your will
     api_key='...' #put your api-key here
