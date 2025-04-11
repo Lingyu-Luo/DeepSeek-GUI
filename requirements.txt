@@ -1,0 +1,5 @@
+streamlit
+openai
+pypdf
+newspaper
+langchain-community==0.0.322
