@@ -1,5 +1,5 @@
 streamlit
 openai
 pypdf
-newspaper
-langchain-community==0.0.322
+newspaper3k
+langchain-community
