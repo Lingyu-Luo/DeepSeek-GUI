@@ -3,4 +3,4 @@ openai
 pypdf
 newspaper3k
 langchain-community
-lxml
+lxml_html_clean
