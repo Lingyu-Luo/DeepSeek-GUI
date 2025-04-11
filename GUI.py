@@ -115,12 +115,16 @@ def convert_messages_for_api(messages, use_vlm):
     return converted
 
 def refresh_convo_list():
-    st.session_state.convo_list = [
-        f for f in os.listdir(HISTORY_DIR)
-        if f.endswith('.json') and os.path.getsize(os.path.join(HISTORY_DIR, f)) > 0
-    ]
-    st.session_state.convo_list.reverse()
-
+    # Get all valid JSON files
+    files = [f for f in os.listdir(HISTORY_DIR) 
+             if f.endswith('.json') and os.path.getsize(os.path.join(HISTORY_DIR, f)) > 0]
+    
+    # Sort by modification time (newest first)
+    st.session_state.convo_list = sorted(
+        files,
+        key=lambda x: os.path.getmtime(os.path.join(HISTORY_DIR, x)),
+        reverse=True
+    )
 
 def new_conversation():
     st.session_state.messages = []
