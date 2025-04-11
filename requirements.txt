@@ -4,3 +4,4 @@ pypdf
 newspaper3k
 langchain-community
 lxml_html_clean
+duckduckgo-search
