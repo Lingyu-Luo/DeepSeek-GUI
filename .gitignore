@@ -1,0 +1,5 @@
+/ChatHistory/
+/vectorstore/
+/output/
+*.zip
+*.rar

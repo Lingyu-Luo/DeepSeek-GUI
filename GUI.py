@@ -14,9 +14,11 @@ client = OpenAI(
 )
 
 HISTORY_DIR = "ChatHistory"
+MEMORY_FILE = "memories.json"
+NUM_CONVO_DISPLAY = 10
 os.makedirs(HISTORY_DIR, exist_ok=True)
-#name_model = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
 name_model = "deepseek-ai/DeepSeek-V3"
+#name_model = "THUDM/GLM-4-32B-0414"
 #vlm_model = "deepseek-ai/deepseek-vl2"
 vlm_model = "Qwen/Qwen2.5-VL-72B-Instruct"
 vlm_max_tokens = 4096
@@ -28,6 +30,8 @@ def init_session():
         st.session_state.current_convo = None
     if 'convo_list' not in st.session_state:
         st.session_state.convo_list = []
+    if 'num_convo_display' not in st.session_state:
+        st.session_state.num_convo_display = 10
     # 新增模型参数初始化
     if 'selected_model' not in st.session_state:
         st.session_state.selected_model = "deepseek-ai/DeepSeek-R1"
@@ -44,7 +48,6 @@ def init_session():
             for item in msg["content"]:
                 if item["type"] == "image_url":
                     item["image_url"]["url"] = str(item["image_url"]["url"])
-
 
 def generate_filename(content):
     # 提取文本内容用于生成文件名
@@ -89,11 +92,15 @@ def convert_messages_for_api(messages, use_vlm):
     for msg in messages:
         if use_vlm:
             if isinstance(msg["content"], list):
-                content = [{
-                    "type": item["type"],
-                    "image_url": {"url": item["image_url"]["url"]} if item["type"] == "image_url" else None,
-                    "text": item.get("text", "")} for item in msg["content"]
-                ]
+                content = []
+                for item in msg["content"]:
+                    if item["type"] in ["text", "image_url"]:  # 只保留这两种类型
+                        content_item = {"type": item["type"]}
+                        if item["type"] == "image_url":
+                            content_item["image_url"] = {"url": item["image_url"]["url"]}
+                        elif item["type"] == "text":
+                            content_item["text"] = item.get("text", "")
+                        content.append(content_item)
             else:
                 content = [{"type": "text", "text": str(msg["content"])}]
         else:
@@ -115,16 +122,12 @@ def convert_messages_for_api(messages, use_vlm):
     return converted
 
 def refresh_convo_list():
-    # Get all valid JSON files
-    files = [f for f in os.listdir(HISTORY_DIR) 
-             if f.endswith('.json') and os.path.getsize(os.path.join(HISTORY_DIR, f)) > 0]
-    
-    # Sort by modification time (newest first)
-    st.session_state.convo_list = sorted(
-        files,
-        key=lambda x: os.path.getmtime(os.path.join(HISTORY_DIR, x)),
-        reverse=True
-    )
+    st.session_state.convo_list = [
+        f for f in os.listdir(HISTORY_DIR)
+        if f.endswith('.json') and os.path.getsize(os.path.join(HISTORY_DIR, f)) > 0
+    ]
+    st.session_state.convo_list.reverse()
+
 
 def new_conversation():
     st.session_state.messages = []
@@ -163,10 +166,8 @@ with st.sidebar:
         "选择对话模型",
         ["deepseek-ai/DeepSeek-R1",
          "deepseek-ai/DeepSeek-V3",
-         "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
-         "Qwen/QwQ-32B",
-         "Pro/deepseek-ai/DeepSeek-R1",
-         "Pro/deepseek-ai/DeepSeek-V3"],
+         "Qwen/Qwen3-235B-A22B",
+         "Pro/deepseek-ai/DeepSeek-R1-0120"],
         index=0
     )
 
@@ -231,7 +232,8 @@ with st.sidebar:
 
     st.subheader("历史对话")
     refresh_convo_list()
-    for convo in st.session_state.convo_list:
+    convo_render_list = st.session_state.convo_list[:st.session_state.num_convo_display]
+    for convo in convo_render_list:
         cols = st.columns([3, 1])
         with cols[0]:
             if st.button(convo[:-5], key=f"btn_{convo}", use_container_width=True):
@@ -243,6 +245,10 @@ with st.sidebar:
                 if st.session_state.current_convo == convo:
                     new_conversation()
                 st.rerun()
+    if st.session_state.num_convo_display < len(st.session_state.convo_list):
+        if st.button("加载更多...",key="load_more_convo"):
+            st.session_state.num_convo_display += 10
+            st.rerun()
 
 # 主界面布局
 st.title("智能对话助手（支持图文）")
@@ -262,7 +268,7 @@ for msg in st.session_state.messages:
                 if item["type"] == "image_url":
                     try:
                         base64_str = item["image_url"]["url"].split(",")[1]
-                        st.image(base64.b64decode(base64_str), use_column_width=True)
+                        st.image(base64.b64decode(base64_str), use_container_width=True)
                     except:
                         st.error("图片加载失败")
                 elif item["type"] == "text" and item["text"].strip():
@@ -331,19 +337,13 @@ if prompt := st.chat_input("请输入您的问题或描述..."):
     }
     st.session_state.messages.append(user_message)
 
-    # 生成文件名（优先使用文本内容）
-    filename_content = prompt.strip()
-    if not st.session_state.current_convo:
-        print("正在生成对话文件名...")
-        st.session_state.current_convo = generate_filename(filename_content)
-
     # 显示用户消息
     with st.chat_message("user", avatar="🧑"):
         for item in message_content:
             if item["type"] == "image_url":
                 try:
                     base64_str = item["image_url"]["url"].split(",")[1]
-                    st.image(base64.b64decode(base64_str), use_column_width=True)
+                    st.image(base64.b64decode(base64_str), use_container_width=True)
                 except:
                     st.error("图片显示失败")
             elif item["type"] == "text":
@@ -398,9 +398,10 @@ if prompt := st.chat_input("请输入您的问题或描述..."):
                 if hasattr(chunk.choices[0].delta, 'reasoning_content'):
                     reasoning = chunk.choices[0].delta.reasoning_content or ""
                     full_reasoning += reasoning
-                    with reasoning_placeholder.expander("🤔 实时推理"):
-                        st.markdown(full_reasoning)
-            print("响应接受完成。\n\n")
+                    if full_reasoning.strip():
+                        with reasoning_placeholder.expander("🤔 实时推理"):
+                            st.markdown(full_reasoning)
+            print("响应接受完成。")
 
             # 保存最终响应
             with reasoning_placeholder:
@@ -422,10 +423,16 @@ if prompt := st.chat_input("请输入您的问题或描述..."):
             "reasoning": f"错误信息: {str(e)}"
         })
 
+    # 生成文件名（优先使用文本内容）
+    filename_content = prompt.strip()
+    if not st.session_state.current_convo:
+        print("正在生成对话文件名...")
+        st.session_state.current_convo = generate_filename(filename_content)
     # 保存对话记录
     if st.session_state.current_convo:
         save_conversation()
         refresh_convo_list()
+    print("\n")
 
 # 自动滚动和保存功能（保持不变）
 st.markdown("""

@@ -97,8 +97,9 @@ def parse_custom_format(raw_str):
 
 def search_results(query):
     """执行搜索并爬取结果页面"""
-    search = DuckDuckGoSearchResults()
-    results = parse_custom_format(search.invoke(query))
+    search = DuckDuckGoSearchResults(output_format='list')
+    results = search.invoke(query)
+
     references = []
 
     for i, result in enumerate(results, 1):
@@ -134,4 +135,13 @@ def search_results(query):
 
 if __name__ == "__main__":
     query = "自我原则点评调优（SPCT）与元奖励模型（Meta Reward Model）"
-    search_results(query)
+    all_references = search_results(query)  # Store the returned list
+    print("\n--- Extracted References ---")
+    if all_references:
+        for ref in all_references:
+            print(f"Title: {ref['title']}")
+            print(f"Link: {ref['link']}")
+            print(f"Content (first 500 chars):\n{ref['content'][:500]}...\n")
+            print("-" * 30)
+    else:
+        print("No references found or extracted.")
