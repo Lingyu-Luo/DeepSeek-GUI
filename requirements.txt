@@ -1,6 +1,7 @@
 streamlit
 openai
 pypdf
+pdfminer.six
 newspaper3k
 langchain-community
 lxml_html_clean
