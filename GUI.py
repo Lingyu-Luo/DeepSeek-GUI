@@ -146,6 +146,15 @@ def save_conversation():
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
 
+
+def render_with_latex(text: str):
+    text = text.replace(r'\\\\',r"\\")
+    text = text.replace(r'\(',r"$")
+    text = text.replace(r'\)', r"$")
+    text = text.replace(r'\[', r"$$")
+    text = text.replace(r'\]', r"$$")
+    st.markdown(text)
+
 # 初始化会话
 init_session()
 
@@ -167,7 +176,9 @@ with st.sidebar:
         ["deepseek-ai/DeepSeek-R1",
          "deepseek-ai/DeepSeek-V3",
          "Qwen/Qwen3-235B-A22B",
-         "Pro/deepseek-ai/DeepSeek-R1-0120"],
+         "Qwen/Qwen3-32B",
+         "Pro/deepseek-ai/DeepSeek-R1",
+         "Pro/deepseek-ai/DeepSeek-V3"],
         index=0
     )
 
@@ -260,7 +271,7 @@ for msg in st.session_state.messages:
         # 先显示推理内容（如果有）
         if msg["role"] == "assistant" and msg.get("reasoning"):
             with st.expander("🧠 推理过程（点击展开）"):
-                st.markdown(msg["reasoning"])
+                render_with_latex(msg["reasoning"])
 
         # 再显示消息内容
         if isinstance(msg["content"], list):
@@ -272,16 +283,16 @@ for msg in st.session_state.messages:
                     except:
                         st.error("图片加载失败")
                 elif item["type"] == "text" and item["text"].strip():
-                    st.markdown(item["text"])
+                    render_with_latex(item["text"])
                 elif item["type"] == "reference":
                     with st.expander("📚 参考来源（点击展开）"):
                         for i, ref in enumerate(item["reference"]):
                             st.caption(f"参考资料 {i + 1}")
-                            st.markdown(f"```\n{ref['content']}\n```")
+                            render_with_latex(f"```\n{ref['content']}\n```")
                             if 'title' and 'link' in ref:
                                 st.caption(f"{ref['title']}\n{ref['link']}")
         else:
-            st.markdown(msg["content"])
+            render_with_latex(msg["content"])
 
 # 处理用户输入（新增图片上传）
 uploaded_files = st.file_uploader(
@@ -347,12 +358,12 @@ if prompt := st.chat_input("请输入您的问题或描述..."):
                 except:
                     st.error("图片显示失败")
             elif item["type"] == "text":
-                st.markdown(item["text"])
+                render_with_latex(item["text"])
             elif item["type"] == "reference":
                 with st.expander("📚 参考来源（点击展开）"):
                     for i, ref in enumerate(item["reference"]):
                         st.caption(f"参考资料 {i + 1}")
-                        st.markdown(f"```\n{ref['content']}\n```")
+                        render_with_latex(f"```\n{ref['content']}\n```")
                         if 'title' and 'link' in ref:
                             st.caption(f"{ref['title']}\n{ref['link']}")
 
@@ -366,7 +377,7 @@ if prompt := st.chat_input("请输入您的问题或描述..."):
 
     # 准备API请求
     try:
-        with st.chat_message("assistant", avatar="🤖"):
+        with ((st.chat_message("assistant", avatar="🤖"))):
             reasoning_placeholder = st.empty()
             answer_placeholder = st.empty()
             full_reasoning = ""
@@ -392,7 +403,8 @@ if prompt := st.chat_input("请输入您的问题或描述..."):
                 # 处理常规回答
                 if chunk.choices[0].delta.content:
                     full_answer += chunk.choices[0].delta.content or ""
-                    answer_placeholder.markdown(full_answer + "▌")
+                    with answer_placeholder:
+                        render_with_latex(full_answer + "▌")
 
                 # 处理推理过程
                 if hasattr(chunk.choices[0].delta, 'reasoning_content'):
@@ -400,15 +412,16 @@ if prompt := st.chat_input("请输入您的问题或描述..."):
                     full_reasoning += reasoning
                     if full_reasoning.strip():
                         with reasoning_placeholder.expander("🤔 实时推理"):
-                            st.markdown(full_reasoning)
+                            render_with_latex(full_reasoning)
             print("响应接受完成。")
 
             # 保存最终响应
             with reasoning_placeholder:
                 if full_reasoning.strip():
                     with st.expander("🧠 推理过程"):
-                        st.markdown(full_reasoning.strip())
-            answer_placeholder.markdown(full_answer)
+                        render_with_latex(full_reasoning.strip())
+            with answer_placeholder:
+                render_with_latex(full_answer)
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": full_answer,
